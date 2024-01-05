@@ -1,0 +1,132 @@
+image:
+  name: traefik
+  tag: 2.3.0
+
+ingressClass:
+  enabled: true
+  fallbackApiVersion: ""
+  isDefaultClass: false
+  name: traefik-test
+
+deployment:
+  kind: Deployment
+  enabled: true
+  replicas: 1
+  annotations: {}
+  podAnnotations:
+    prometheus.io/port: "9100"
+    prometheus.io/scrape: "true"
+
+metrics:
+  prometheus:
+    addEntryPointsLabels: false
+    addServicesLabels: false
+    entryPoint: metrics
+
+ingressRoute:
+  dashboard:
+    enabled: true
+    insecure: true
+    annotations: {}
+    labels: {}
+
+rollingUpdate:
+  maxUnavailable: 1
+  maxSurge: 1
+
+logs:
+  general:
+    level: ERROR
+
+ports:
+  metrics:
+    port: 9100
+    expose: true
+    exposedPort: 9100
+  dashboard:
+    port: 8080
+    expose: true
+    exposedPort: 8080
+  traefik:
+    port: 9000
+    expose: false
+    exposedPort: 9000
+    protocol: TCP
+  web:
+    port: 8000
+    expose: true
+    exposedPort: 80
+  websecure:
+    port: 8443
+    expose: true
+    exposedPort: 443
+persistence:
+  enabled: true
+  accessMode: ReadWriteOnce
+  size: 128Mi
+  path: /data
+  annotations: {}
+
+providers:
+  kubernetesCRD:
+    enabled: true
+    ingressClass: traefik-test
+  kubernetesIngress:
+    enabled: true
+    ingressEndpoint:
+      publishedService: traefik/traefik #  namespace and service name
+resources:
+  limits:
+    cpu: "2"
+    memory: 8Gi
+  requests:
+    cpu: 200m
+    memory: 128Mi
+securityContext:
+  capabilities:
+    add:
+      - NET_BIND_SERVICE
+    drop:
+      - ALL
+  readOnlyRootFilesystem: true
+  runAsGroup: 0
+  runAsNonRoot: false
+  runAsUser: 0
+
+podSecurityContext:
+  fsGroup: 65532
+
+podDisruptionBudget:
+  enabled: false
+
+rbac:
+  enabled: true
+
+globalArguments:
+  - --api.insecure=true
+  - --global.sendanonymoususage=false
+  - --global.checknewversion=false
+
+additionalArguments:
+  - --api=true
+  - --api.dashboard=true
+  - --accesslog=true
+  - --providers.kubernetesingress
+  - --providers.kubernetescrd
+  - --metrics.prometheus=true
+  - --metrics.prometheus.entryPoint=metrics
+  - --serversTransport.insecureSkipVerify=true
+  - --ping
+  - --entrypoints.web.address=:80
+  - --entrypoints.websecure.address=:443
+  - --entryPoints.traefik.address=:9000
+  - --entryPoints.metrics.address=:9100
+  # - --entrypoints.web.http.redirections.entryPoint.to=websecure
+  # - --entrypoints.web.http.redirections.entryPoint.scheme=https
+  # - --entrypoints.web.http.redirections.entrypoint.permanent=true
+
+  - "--providers.kubernetescrd=true"
+  - "--certificatesresolvers.le.acme.dnschallenge.provider=digitalocean"
+  - "--certificatesresolvers.le.acme.dnschallenge.delaybeforecheck=0"
+  - "--certificatesresolvers.le.acme.email=ottodpc@alkwelo.app"
+  - "--certificatesresolvers.le.acme.storage=/data/acme.json"
